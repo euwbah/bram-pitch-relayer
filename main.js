@@ -26,7 +26,7 @@ window.onload = function () {
     $startBtn.onclick = beginRecording;
 
     let wssaddr = window.prompt("Enter websocket address: ", "127.0.0.1:4269");
-    wss = new WebSocket("wss://" + wssaddr);
+    wss = new WebSocket("ws://" + wssaddr);
     wss.onerror = (e) => {
         $err.innerText = `not connected to websocket server`
     };
@@ -111,7 +111,6 @@ function autoCorrelate(buf, sampleRate) {
         }
 
     buf = buf.slice(r1, r2);
-    SIZE = buf.length;
 
     let c = new Array(SIZE).fill(0);
     for (let i = 0; i < SIZE; i++)
