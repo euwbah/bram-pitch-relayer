@@ -53,12 +53,12 @@ function gotStream(stream) {
     mediaStreamSource = audioContext.createMediaStreamSource(stream);
 
     lpfilter = audioContext.createBiquadFilter();
-    lpfilter.frequency.value = 2000;
+    lpfilter.frequency.value = 1500;
     lpfilter.type = 'lowpass';
     mediaStreamSource.connect(lpfilter);
 
     hpfilter = audioContext.createBiquadFilter();
-    hpfilter.frequency.value = 60;
+    hpfilter.frequency.value = 103.83;
     hpfilter.type = 'highpass';
     lpfilter.connect(hpfilter);
 
@@ -163,7 +163,8 @@ function stepsToNoteName(steps) {
 let droppedCycles = 0;
 const MAX_DROP_ALLOW = 2;
 const AVERAGE_N_CYCLES = 4;
-const AVERAGE_N_CYCLES_HOLD = 12;
+const INCREASE_N_CYCLES_PER_CONSISTENT_NOTE = 1; // doesn't affect N_CYCLES_HOLD
+const AVERAGE_N_CYCLES_HOLD = 15;
 let history = [];
 let newCandidateNote = null;
 const NOTE_CONSISTENCY_REQUIREMENT = 5;
@@ -180,8 +181,8 @@ function updatePitch(deltaTime) {
     if (ac !== -1) {
         droppedCycles = 0;
         history.unshift(ac);
-        if ((candidateNoteConsistency < NOTE_CONSISTENCY_REQUIREMENT && history.length > AVERAGE_N_CYCLES)
-            || history.length > AVERAGE_N_CYCLES_HOLD)
+        while ((candidateNoteConsistency < NOTE_CONSISTENCY_REQUIREMENT && history.length > AVERAGE_N_CYCLES + INCREASE_N_CYCLES_PER_CONSISTENT_NOTE * candidateNoteConsistency)
+        || history.length > AVERAGE_N_CYCLES_HOLD)
             history.pop();
 
         let avgHz = history.reduce((acc, x) => acc + x, 0) / history.length;
@@ -192,11 +193,10 @@ function updatePitch(deltaTime) {
         if (stepsFromA4 !== newCandidateNote) {
             candidateNoteConsistency = 0;
             newCandidateNote = stepsFromA4;
-        } else {
+        } else if (candidateNoteConsistency < NOTE_CONSISTENCY_REQUIREMENT)
             candidateNoteConsistency++;
-            if (candidateNoteConsistency >= NOTE_CONSISTENCY_REQUIREMENT) {
-                currentNote = stepsFromA4;
-            }
+        else {
+            currentNote = stepsFromA4;
         }
 
         if (currentNote !== null) {
