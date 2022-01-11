@@ -169,7 +169,6 @@ let buf = new Float32Array(BUFFER_SIZE);
 function updatePitch(deltaTime) {
     analyser.getFloatTimeDomainData(buf);
     let ac = autoCorrelate(buf, audioContext.sampleRate);
-    console.log(ac);
 
     if (ac > 0) {
         droppedCycles = 0;
