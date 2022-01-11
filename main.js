@@ -17,9 +17,6 @@ window.onload = function () {
     $startBtn = document.querySelector('#start');
     $err = document.querySelector('#err');
 
-    audioContext = new AudioContext();
-    MAX_SIZE = Math.max(4, Math.floor(audioContext.sampleRate / 5000));	// corresponds to a 5kHz signal
-
     if (!window.requestAnimationFrame)
         window.requestAnimationFrame = window.webkitRequestAnimationFrame;
 
@@ -70,7 +67,8 @@ function gotStream(stream) {
 }
 
 function beginRecording() {
-    audioContext.resume();
+    audioContext = new AudioContext();
+    MAX_SIZE = Math.max(4, Math.floor(audioContext.sampleRate / 5000));	// corresponds to a 5kHz signal
     getUserMedia(
         {
             "audio": {
@@ -83,57 +81,53 @@ function beginRecording() {
                 "optional": []
             },
         }, gotStream);
+
+    $startBtn.display = 'none';
 }
 
-function autoCorrelate(buf, sampleRate) {
+function autoCorrelate( buf, sampleRate ) {
     // Implements the ACF2+ algorithm
-    let SIZE = buf.length;
-    let rms = 0;
+    var SIZE = buf.length;
+    var rms = 0;
 
-    for (let i = 0; i < SIZE; i++) {
-        let val = buf[i];
-        rms += val * val;
+    for (var i=0;i<SIZE;i++) {
+        var val = buf[i];
+        rms += val*val;
     }
-    rms = Math.sqrt(rms / SIZE);
-    if (rms < 0.01) // not enough signal
+    rms = Math.sqrt(rms/SIZE);
+    if (rms<0.01) // not enough signal
         return -1;
 
-    let r1 = 0, r2 = SIZE - 1, thres = 0.2;
-    for (let i = 0; i < SIZE / 2; i++)
-        if (Math.abs(buf[i]) < thres) {
-            r1 = i;
-            break;
-        }
-    for (let i = 1; i < SIZE / 2; i++)
-        if (Math.abs(buf[SIZE - i]) < thres) {
-            r2 = SIZE - i;
-            break;
-        }
+    var r1=0, r2=SIZE-1, thres=0.2;
+    for (var i=0; i<SIZE/2; i++)
+        if (Math.abs(buf[i])<thres) { r1=i; break; }
+    for (var i=1; i<SIZE/2; i++)
+        if (Math.abs(buf[SIZE-i])<thres) { r2=SIZE-i; break; }
 
-    buf = buf.slice(r1, r2);
+    buf = buf.slice(r1,r2);
+    SIZE = buf.length;
 
-    let c = new Array(SIZE).fill(0);
-    for (let i = 0; i < SIZE; i++)
-        for (let j = 0; j < SIZE - i; j++)
-            c[i] = c[i] + buf[j] * buf[j + i];
+    var c = new Array(SIZE).fill(0);
+    for (var i=0; i<SIZE; i++)
+        for (var j=0; j<SIZE-i; j++)
+            c[i] = c[i] + buf[j]*buf[j+i];
 
-    let d = 0;
-    while (c[d] > c[d + 1]) d++;
-    let maxval = -1, maxpos = -1;
-    for (let i = d; i < SIZE; i++) {
+    var d=0; while (c[d]>c[d+1]) d++;
+    var maxval=-1, maxpos=-1;
+    for (var i=d; i<SIZE; i++) {
         if (c[i] > maxval) {
             maxval = c[i];
             maxpos = i;
         }
     }
-    let T0 = maxpos;
+    var T0 = maxpos;
 
-    let x1 = c[T0 - 1], x2 = c[T0], x3 = c[T0 + 1];
-    a = (x1 + x3 - 2 * x2) / 2;
-    b = (x3 - x1) / 2;
-    if (a) T0 = T0 - b / (2 * a);
+    var x1=c[T0-1], x2=c[T0], x3=c[T0+1];
+    a = (x1 + x3 - 2*x2)/2;
+    b = (x3 - x1)/2;
+    if (a) T0 = T0 - b/(2*a);
 
-    return sampleRate / T0;
+    return sampleRate/T0;
 }
 
 function mod31(n) {
@@ -162,8 +156,8 @@ function stepsToNoteName(steps) {
 let droppedCycles = 0;
 const MAX_DROP_ALLOW = 2;
 const AVERAGE_N_CYCLES = 4;
-const INCREASE_N_CYCLES_PER_CONSISTENT_NOTE = 1; // doesn't affect N_CYCLES_HOLD
-const AVERAGE_N_CYCLES_HOLD = 15;
+const INCREASE_N_CYCLES_PER_CONSISTENT_NOTE = 0; // doesn't affect N_CYCLES_HOLD
+const AVERAGE_N_CYCLES_HOLD = 12;
 let history = [];
 let newCandidateNote = null;
 const NOTE_CONSISTENCY_REQUIREMENT = 5;
@@ -173,11 +167,11 @@ let currentNote = null;
 let buf = new Float32Array(BUFFER_SIZE);
 
 function updatePitch(deltaTime) {
-    let cycles = [];
     analyser.getFloatTimeDomainData(buf);
     let ac = autoCorrelate(buf, audioContext.sampleRate);
+    console.log(ac);
 
-    if (ac !== -1) {
+    if (ac > 0) {
         droppedCycles = 0;
         history.unshift(ac);
         while ((candidateNoteConsistency < NOTE_CONSISTENCY_REQUIREMENT && history.length > AVERAGE_N_CYCLES + INCREASE_N_CYCLES_PER_CONSISTENT_NOTE * candidateNoteConsistency)
